@@ -81,7 +81,11 @@ O tablet foi reaproveitado com um conjunto de ferramentas de desenvolvedor:
 
 Hoje ele hospeda **projetos reais**: páginas locais de desenvolvimento, sites de teste e o **[ounc3.com.br](https://ounc3.com.br)**, onde roda o **OunceDown** (ferramenta de download de mídia em Node.js). É a prova de que hardware de entrada esquecido na gaveta pode virar um ambiente de testes útil de verdade.
 
-`[Inserir Print: o site ounc3.com.br aberto no navegador, com o cadeado HTTPS visível]`
+![ounc3.com.br no ar, servido pelo tablet](docs/prints/13-ounc3-desktop.png)
+
+<p align="center"><img src="docs/prints/14-ounc3-celular.png" alt="ounc3.com.br no celular" width="280"></p>
+
+![HTTPS válido com a Cloudflare na frente e o Express do tablet por trás](docs/prints/15-https-ounc3.png)
 
 ---
 
@@ -128,6 +132,7 @@ Servir HTML, CSS e imagens é tranquilo: o nginx usa poucos MB de RAM e responde
 |---|---|
 | Página estática (nginx) | Instantâneo |
 | Consultar informações de um vídeo (yt-dlp) | **~40 segundos** (num PC comum: 2–5 s) |
+| Teste medido: clipe de **19 s** pedido em 720p | **207 segundos** do pedido ao MP4 pronto |
 | Baixar e montar vídeo em **720p** | Funciona, mas lento — e é o **limite configurado** |
 | 1080p / 4K | Desativados no tablet: tempo e memória inviáveis |
 | Downloads simultâneos | Limitado a **1 por vez** |
@@ -136,7 +141,7 @@ Servir HTML, CSS e imagens é tranquilo: o nginx usa poucos MB de RAM e responde
 
 Um download de vídeo não é uma única operação, e sim uma cadeia em que **tudo acontece ao mesmo tempo e disputa o mesmo 1 GB de RAM**:
 
-1. **Ler o link** — o yt-dlp é um programa Python grande. Só carregar o interpretador e os extratores já consome dezenas de MB e vários segundos de CPU num Cortex-A35. Depois ele ainda precisa interpretar as páginas e os scripts da plataforma para descobrir os formatos disponíveis.
+1. **Ler o link** — o yt-dlp é um programa Python grande. Só carregar o interpretador e os extratores já consome dezenas de MB e vários segundos de CPU num Cortex-A35. Depois ele ainda precisa interpretar as páginas e os scripts da plataforma para descobrir os formatos disponíveis. No YouTube, isso inclui abrir um **Node.js** para resolver um desafio em JavaScript: medido no tablet, esse processo sozinho chegou a **170% de CPU e ~120 MB de RAM**, empurrando a swap de 90 para 183 MB.
 2. **Gerar o buffer** — os dados chegam pelo Wi-Fi em pedaços e ficam em memória antes de serem gravados. Com pouca RAM livre, o Android começa a comprimir páginas na **zram**, o que gasta ainda mais CPU justamente quando ela é necessária.
 3. **Gravar simultaneamente** — vídeo e áudio de alta qualidade chegam separados. O **ffmpeg** precisa ler os dois arquivos e escrever um terceiro (o MP4 final). O armazenamento interno (eMMC) e, principalmente, o **microSD** têm escrita lenta, e o processador fica preso esperando o disco.
 4. **Concorrência com o resto** — nginx, cloudflared, sshd e o próprio Android continuam rodando. O sistema Go mata processos em segundo plano quando a memória aperta, então um pico de consumo pode derrubar serviços (é para isso que existe o *vigia*, ver [5.5](#55-servidor-web-e-serviços-que-sobem-sozinhos)).
@@ -153,7 +158,9 @@ O gargalo, portanto, **não é a internet**: é o hardware tentando ler, segurar
 
 > 📌 O tablet é um **ambiente de testes**. Para produção com tráfego real de vídeos, o plano é migrar o OunceDown para um PC e manter o tablet servindo sites leves.
 
-`[Inserir Print: saída do comando "free -m" e/ou "top" durante um download no OunceDown]`
+![Download real de um clipe de 19 s no tablet: 207 s no total](docs/prints/11-download-720p.png)
+
+![CPU e memória durante o download: yt-dlp e o Node.js do desafio do YouTube disputando o hardware](docs/prints/12-cpu-durante-download.png)
 
 ---
 
@@ -268,7 +275,7 @@ Abra o **Termux** e o **Termux:Boot** uma vez no tablet (o Boot só passa a func
 ~ $ termux-wake-lock
 ```
 
-`[Inserir Print: tela do Termux após o "pkg install" concluído]`
+![Sistema e versões dos pacotes rodando no Termux](docs/prints/02-sistema.png)
 
 ### 5.4 Acesso remoto: SSH e SCP
 
@@ -344,7 +351,7 @@ PC> scp -r twist:www/site1 .\backup-site1         # backup de um site inteiro
 > $ run-as com.termux
 > ```
 
-`[Inserir Print: PowerShell conectado via "ssh twist" mostrando o prompt do Termux]`
+![Comando remoto via ssh twist a partir do PowerShell](docs/prints/01-ssh-sessao.png)
 
 ### 5.5 Servidor web e serviços que sobem sozinhos
 
@@ -399,7 +406,7 @@ export MAX_CONCURRENT=1
 export MAX_HEIGHT=720
 export YTDLP_PATH="$PREFIX/bin/yt-dlp"
 export FFMPEG_PATH="$PREFIX/bin/ffmpeg"
-exec node server.js 2>&1
+exec node --max-old-space-size=96 server.js 2>&1   # limita o heap do Node a 96 MB
 ```
 
 ```bash
@@ -441,8 +448,9 @@ done
 
 Resultado testado: depois de desligar e ligar o tablet, **tudo volta ao ar em ~1 min e meio**, sem desbloquear a tela nem abrir o Termux.
 
-`[Inserir Print: "sv status" com todos os serviços em "run:"]`
-`[Inserir Print: trecho do ~/logs/vigia.log mostrando um serviço religado]`
+![sv status com todos os serviços em run:](docs/prints/03-servicos.png)
+
+![Log do vigia religando o supervisor e subindo tudo após o boot](docs/prints/06-vigia-log.png)
 
 ### 5.6 Conectividade: IP estático
 
@@ -515,13 +523,17 @@ Aparece um endereço aleatório `https://xxxx.trycloudflare.com`. Ótimo para te
 ~ $ chmod 600 ~/.cloudflared/token
 ```
 
-Serviço runit em `$PREFIX/var/service/cloudflared/run` (o token é lido do arquivo e passado por variável de ambiente, para **não aparecer na lista de processos nem no histórico**):
+Serviço runit em `$PREFIX/var/service/cloudflared/run`. O `--token-file` faz o cloudflared ler o token direto do arquivo, então ele **não aparece na lista de processos nem no histórico**:
 
 ```sh
 #!/data/data/com.termux/files/usr/bin/sh
-export TUNNEL_TOKEN="$(cat ~/.cloudflared/token)"
-exec cloudflared tunnel --no-autoupdate run 2>&1
+exec cloudflared tunnel --no-autoupdate \
+  --edge region1.v2.argotunnel.com:7844 \
+  --edge region2.v2.argotunnel.com:7844 \
+  run --token-file "$HOME/.cloudflared/token" 2>&1
 ```
+
+> Os parâmetros `--edge` apontam direto para os servidores da Cloudflare. No Termux, a descoberta automática (via DNS SRV) às vezes falha; com eles, o túnel conecta sempre.
 
 ```bash
 ~ $ chmod +x $PREFIX/var/service/cloudflared/run
@@ -535,7 +547,7 @@ Pronto: o site responde no domínio, com HTTPS. Para publicar um site novo depoi
 
 `[Inserir Print: painel Zero Trust → Tunnels mostrando o túnel "twist" com status HEALTHY]`
 `[Inserir Print: aba Public Hostname com os domínios apontando para localhost]`
-`[Inserir Print: log do cloudflared com "Registered tunnel connection" (sem token visível)]`
+![Log do cloudflared: túnel conectado a datacenters em São Paulo](docs/prints/09-cloudflared.png)
 
 ### 5.8 Estrutura de pastas para múltiplos sites
 
@@ -592,7 +604,9 @@ Depois é só enviar os arquivos do PC com `scp -r ".\site2\*" twist:www/site2/`
 
 > 💾 O microSD está em **FAT32**: guarda arquivos normalmente, mas não aceita permissões Unix nem executáveis. Por isso os sites e apps ficam no armazenamento interno.
 
-`[Inserir Print: "ls" mostrando a estrutura de pastas ~/www e ~/apps no Termux]`
+![Estrutura real de pastas no servidor](docs/prints/07-estrutura-pastas.png)
+
+![nginx validado e sites respondendo](docs/prints/08-nginx.png)
 
 ---
 
@@ -624,7 +638,11 @@ Depois é só enviar os arquivos do PC com `scp -r ".\site2\*" twist:www/site2/`
 | Após queda de energia | Nada — o Termux:Boot e o vigia sobem tudo. Só confira o log |
 | Antes de editar configuração | `cp arquivo arquivo.bak` e testar depois (`nginx -t`, `sshd -t`) |
 
-`[Inserir Print: saída de "free -m" e "sv status" em operação normal]`
+![Memória e armazenamento em operação normal](docs/prints/04-memoria-disco.png)
+
+![Processos que mais consomem RAM](docs/prints/05-processos.png)
+
+![Bateria lida pelo Termux:API](docs/prints/10-bateria.png)
 
 ---
 
@@ -674,24 +692,27 @@ logs/
 
 ## 📸 9. Prints e evidências
 
-Checklist das capturas a encaixar nos espaços marcados ao longo do guia (salve em `docs/prints/`):
+Os prints de terminal foram gerados a partir de **saídas reais** coletadas por SSH no servidor em 17/11/2026, com dados sensíveis mascarados (destacados em rosa: usuário `u0_aXX`, ID do microSD, IDs de conexão e IPs do túnel). Os do site foram capturados direto de `https://ounc3.com.br`. Tudo fica em `docs/prints/`.
 
+- [x] Sessão `ssh twist` a partir do PowerShell
+- [x] Sistema e versões dos pacotes no Termux
+- [x] `sv status` com todos os serviços em `run:`
+- [x] Memória e armazenamento (`free -m`, `df -h`)
+- [x] Processos que mais consomem RAM
+- [x] Log do vigia religando o supervisor
+- [x] Estrutura de pastas no servidor
+- [x] nginx validado e sites respondendo
+- [x] Log do cloudflared com "Registered tunnel connection"
+- [x] Bateria via Termux:API
+- [x] Download real no OunceDown (207 s para um clipe de 19 s)
+- [x] CPU e memória durante o download
+- [x] **ounc3.com.br no ar** (desktop e celular) + HTTPS validado
 - [ ] Foto do tablet funcionando como servidor
-- [ ] Opções do desenvolvedor com a Depuração USB ativada
-- [ ] `adb devices` listando o tablet (serial borrado)
-- [ ] Debloat: lista de pacotes e comandos de remoção
-- [ ] Memória antes × depois do debloat
-- [ ] Termux após a instalação dos pacotes
-- [ ] Sessão `ssh twist` aberta no PowerShell
-- [ ] `sv status` com todos os serviços em `run:`
-- [ ] Log do vigia religando um serviço
-- [ ] Wi-Fi com IP estático (IP borrado)
-- [ ] Painel Cloudflare: túnel **HEALTHY**
-- [ ] Painel Cloudflare: Public Hostnames
-- [ ] Log do cloudflared com "Registered tunnel connection"
-- [ ] Estrutura de pastas no Termux
-- [ ] `free -m` / `top` durante um download no OunceDown
-- [ ] **ounc3.com.br no ar** com o cadeado HTTPS
+- [ ] Opções do desenvolvedor com a Depuração USB ativada *(precisa do tablet em mãos)*
+- [ ] `adb devices` listando o tablet *(precisa do cabo USB)*
+- [ ] Debloat: lista de pacotes e memória antes × depois *(precisa do cabo USB)*
+- [ ] Wi-Fi com IP estático *(tela do Android, borrar o IP)*
+- [ ] Painel Cloudflare: túnel **HEALTHY** e Public Hostnames *(precisa do login na Cloudflare)*
 
 Para inserir uma imagem no Markdown:
 
