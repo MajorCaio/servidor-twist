@@ -34,6 +34,7 @@ Este repositório documenta **como montei, configurei e mantenho** o servidor, d
 7. [Solução de problemas](#-7-solução-de-problemas)
 8. [Segurança: o que nunca vai para o GitHub](#-8-segurança-o-que-nunca-vai-para-o-github)
 9. [Prints e evidências](#-9-prints-e-evidências)
+10. [Referências e vídeos de orientação](#-10-referências-e-vídeos-de-orientação)
 
 ---
 
@@ -719,6 +720,59 @@ Para inserir uma imagem no Markdown:
 ```markdown
 ![Descrição do print](docs/prints/nome-do-arquivo.png)
 ```
+
+---
+
+## 📚 10. Referências e vídeos de orientação
+
+Material que serviu de base e ajuda a entender cada etapa com mais calma. A documentação oficial vem primeiro, porque é a fonte mais confiável e a mais atualizada; os vídeos complementam com a parte visual.
+
+> 🇧🇷 = em português · 🇺🇸 = em inglês (dá para ativar a legenda traduzida no YouTube: ⚙️ → Legendas → Traduzir automaticamente → Português).
+
+### Documentação oficial
+
+| Tema | Fonte |
+|---|---|
+| ADB (Android Debug Bridge) | [Android Developers — Android Debug Bridge](https://developer.android.com/tools/adb) |
+| Termux (download correto) | [Termux no F-Droid](https://f-droid.org/packages/com.termux/) |
+| SSH no Termux | [Termux Wiki — Remote Access](https://wiki.termux.com/wiki/Remote_Access) |
+| Cloudflare Tunnel | [Cloudflare Docs — Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/) |
+| Debloat com interface gráfica | [Universal Android Debloater Next Generation (GitHub)](https://github.com/Universal-Debloater-Alliance/universal-android-debloater-next-generation) |
+
+### Vídeos por etapa
+
+**Visão geral: Android antigo como servidor**
+
+- 🇧🇷 [Transformando um dispositivo Android em um Servidor com o Termux!](https://www.youtube.com/watch?v=afBAz4kMZQM) — VegaData
+- 🇧🇷 [Instalando Termux e SSH para transformar um Android antigo em um servidor VPS — Parte 01](https://www.youtube.com/watch?v=yGIgQGxr448) — KF Host Tutoriais
+- 🇺🇸 [Turning an Old Android Phone into a Server!](https://www.youtube.com/watch?v=VCItcLP_bFg) — shr3sth
+- 🇺🇸 [Turning a Budget Android Phone into a Dedicated Web Server](https://www.youtube.com/watch?v=YK-drhR5_4U) — SjslTech
+
+**Debloat por ADB (seção [5.2](#52-depuração-e-limpeza-debloat))**
+
+- 🇺🇸 [Uninstall bloatware from Android with ADB](https://www.youtube.com/watch?v=dawEil2EdjQ) — Victor Lin
+- 🇺🇸 [Universal Android Debloater on Windows, Mac or Linux (no root)](https://www.youtube.com/watch?v=faeCUtsEpAs) — M Ayan Sajid
+
+**Termux e nginx (seções [5.3](#53-ambiente-linux-termux) e [5.5](#55-servidor-web-e-serviços-que-sobem-sozinhos))**
+
+- 🇺🇸 [Run Your Website on Android with Termux & NGINX (Step-by-Step)](https://www.youtube.com/watch?v=x0UWNXpILiY) — CST
+
+**SSH e autenticação por chave (seção [5.4](#54-acesso-remoto-ssh-e-scp))**
+
+- 🇧🇷 [Conectando ao celular Android pelo SSH (Termux) — Parte 02](https://www.youtube.com/watch?v=XuPQK9SYpZc) — KF Host Tutoriais
+- 🇺🇸 [How To Install And Use ssh In Termux (No Root)](https://www.youtube.com/watch?v=C4eNyMNPPG4) — Birds In Tech
+- 🇺🇸 [Secure Shell using keys instead of passwords with OpenSSH](https://www.youtube.com/watch?v=TYrLuKXibAY) — NetSecProf
+- 🇺🇸 [Using OpenSSH Key-Based Password-less Authentication](https://www.youtube.com/watch?v=LGUyqbyDNDg) — NetSecProf
+- 🇺🇸 [How to generate SSH key pair using ssh-keygen](https://www.youtube.com/watch?v=8pvLtrG7DKg) — Simplified Guide
+
+**Cloudflare Tunnel (seção [5.7](#57-exposição-segura-cloudflare-tunnel))**
+
+- 🇧🇷 [Cloudflare Tunnel: acesse seu site externamente sem abrir portas no roteador](https://www.youtube.com/watch?v=Y0LTZZCyPko) — Sauber Lab
+- 🇺🇸 [EXPOSE your home network to the INTERNET!! (it's safe)](https://www.youtube.com/watch?v=ey4u7OUAF3c) — NetworkChuck
+- 🇺🇸 [Cloudflare Tunnel Setup Guide — Self-Hosting for EVERYONE](https://www.youtube.com/watch?v=hrwoKO7LMzk) — Raid Owl
+- 🇺🇸 [Getting Started With Cloudflare Tunnels](https://www.youtube.com/watch?v=_OYWOPlWFFY) — What's New Andrew
+
+> ⚠️ **Antes de seguir um vídeo:** a maioria dos tutoriais de Cloudflare Tunnel usa um PC com Linux ou Docker, não o Termux, então os comandos de instalação mudam. Use os vídeos para entender o conceito e o painel da Cloudflare, e os comandos deste README para o tablet. Vídeos envelhecem: em caso de dúvida, a documentação oficial vale mais. Links conferidos em 17/11/2026.
 
 ---
 
