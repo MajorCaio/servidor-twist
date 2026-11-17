@@ -1,0 +1,22 @@
+# Manual interno: contém IP, MAC, usuário, serial e caminhos reais do servidor
+Manual-Servidor-Twist.docx
+*.docx
+
+# Segredos que nunca devem ser versionados
+token
+*.token
+.env
+.env.*
+*.pem
+*.key
+*_ed25519
+*_rsa
+config
+
+# Prints sem tratamento (suba só as versões com dados borrados)
+docs/prints/raw/
+
+# Sistema
+Thumbs.db
+desktop.ini
+.DS_Store
