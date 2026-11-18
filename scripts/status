@@ -1,0 +1,181 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# status — painel rápido do servidor Twist: sistema, memória, disco, serviços, sites e bateria.
+# Uso: status            painel completo
+#      status -r         rápido (pula bateria e teste pela internet)
+#      status -w [seg]   atualiza sozinho a cada N segundos (padrão 5; Ctrl+C para sair)
+#      status --sem-cor  sem cores
+# Pelo PC: ssh -t twist status
+
+RAPIDO=0; WATCH=0; INTERVALO=5; COR=auto
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -r|--rapido) RAPIDO=1 ;;
+    -w|--watch) WATCH=1; case "$2" in ''|*[!0-9]*) ;; *) INTERVALO=$2; shift ;; esac ;;
+    --sem-cor) COR=nao ;;
+    -h|--help) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  esac
+  shift
+done
+
+if [ "$COR" = nao ] || { [ "$COR" = auto ] && [ ! -t 1 ] && [ -z "$FORCE_COLOR" ]; }; then
+  B=''; D=''; R=''; G=''; Y=''; RED=''; C=''
+else
+  B=$'\e[1m'; D=$'\e[2m'; R=$'\e[0m'; G=$'\e[32m'; Y=$'\e[33m'; RED=$'\e[31m'; C=$'\e[36m'
+fi
+OK="${G}✔${R}"; AV="${Y}▲${R}"; ER="${RED}✖${R}"
+export SVDIR=$PREFIX/var/service
+
+ALERTAS=0
+alerta() { ALERTAS=$((ALERTAS + 1)); }
+titulo() { printf '\n%s%s%s\n' "$B$C" "$1" "$R"; }
+
+# 3d 4h / 5h 12m / 7m 30s
+dur() {
+  local s=$1 d h m
+  d=$((s / 86400)); h=$((s % 86400 / 3600)); m=$((s % 3600 / 60))
+  if [ $d -gt 0 ]; then echo "${d}d ${h}h"; elif [ $h -gt 0 ]; then echo "${h}h ${m}m"; else echo "${m}m $((s % 60))s"; fi
+}
+
+# Barra de uso: barra USADO TOTAL
+barra() {
+  local n=$(( $1 * 20 / ($2 > 0 ? $2 : 1) )) i out=''
+  for ((i = 0; i < 20; i++)); do [ $i -lt $n ] && out+='█' || out+='░'; done
+  printf '%s' "$out"
+}
+
+painel() {
+  ALERTAS=0
+
+  # ---------- Cabeçalho ----------
+  local modelo android up carga load1 nucleos
+  modelo=$(getprop ro.product.model 2>/dev/null)
+  android=$(getprop ro.build.version.release 2>/dev/null)
+  up=$(uptime | sed -E 's/.* up +//; s/, +[0-9]+ users?.*//; s/,  *load.*//; s/ days?,/d/; s/([0-9]+):0?([0-9]+)/\1h\2min/')
+  carga=$(uptime | sed -E 's/.*load average: //')
+  load1=${carga%%,*}
+  nucleos=$(nproc)
+  printf '%s🐆 Twist%s · %s · Android %s · %s\n' "$B" "$R" "${modelo:-tablet}" "${android:-?}" "$(date '+%d/%m/%Y %H:%M')"
+  local cor_carga=$G
+  if awk -v l="$load1" -v n="$nucleos" 'BEGIN{exit !(l > n)}'; then cor_carga=$Y; alerta; fi
+  printf '   Ligado há %s · carga %s%s%s %s(%s núcleos)%s\n' "$up" "$cor_carga" "$carga" "$R" "$D" "$nucleos" "$R"
+
+  # ---------- Memória ----------
+  titulo 'MEMÓRIA'
+  local total usado disp stotal susado
+  read -r total usado disp < <(free -m | awk '/^Mem:/{print $2, $3, $7}')
+  read -r stotal susado < <(free -m | awk '/^Swap:/{print $2, $3}')
+  local st=$OK
+  if [ "$disp" -lt 150 ]; then st=$ER; alerta; elif [ "$disp" -lt 250 ]; then st=$AV; alerta; fi
+  printf '   %s RAM   %s  %s%d MB disponíveis%s de %d MB\n' "$st" "$(barra "$((total - disp))" "$total")" "$B" "$disp" "$R" "$total"
+  st=$OK; [ "$susado" -gt 200 ] && { st=$AV; alerta; }
+  printf '   %s Swap  %s  %d de %d MB em uso %s(memória reserva comprimida)%s\n' "$st" "$(barra "$susado" "$stotal")" "$susado" "$stotal" "$D" "$R"
+
+  # ---------- Armazenamento ----------
+  titulo 'ARMAZENAMENTO'
+  local alvo nome
+  for alvo in "$HOME:Interno" "$HOME/sd:microSD"; do
+    nome=${alvo##*:}
+    [ -e "${alvo%:*}" ] || continue
+    df -h "${alvo%:*}" 2>/dev/null | awk 'NR==2{print $2, $3, $4, $5}' | {
+      read -r tam usa livre pct
+      local p=${pct%\%} s=$OK
+      if [ "${p:-0}" -ge 90 ]; then s=$ER; elif [ "${p:-0}" -ge 80 ]; then s=$AV; fi
+      printf '   %s %-8s %s livres de %s %s(%s usado)%s\n' "$s" "$nome" "$livre" "$tam" "$D" "$pct" "$R"
+      [ "$s" = "$OK" ] || exit 1
+    } || alerta
+  done
+
+  # ---------- Serviços ----------
+  titulo 'SERVIÇOS'
+  local servicos linha estado seg
+  servicos=$(sed -n 's/^SERVICOS="\(.*\)"/\1/p' "$HOME/bin/vigia" 2>/dev/null)
+  [ -z "$servicos" ] && servicos="nginx php-fpm sshd cloudflared ouncedown alarme-bateria vigia-guarda"
+  for s in $servicos; do
+    linha=$(sv status "$s" 2>&1)
+    estado=${linha%%:*}
+    seg=$(printf '%s' "$linha" | sed -nE 's/^run: [^:]+: \(pid [0-9]+\) ([0-9]+)s.*/\1/p')
+    if [ "$estado" = run ]; then
+      printf '   %s %-15s no ar há %s\n' "$OK" "$s" "$(dur "${seg:-0}")"
+    else
+      printf '   %s %-15s %sPARADO%s %s(sv up %s)%s\n' "$ER" "$s" "$RED" "$R" "$D" "$s" "$R"; alerta
+    fi
+  done
+
+  # ---------- Sites ----------
+  titulo 'SITES'
+  local conf porta codigo
+  for conf in "$PREFIX"/etc/nginx/sites/*.conf; do
+    [ -e "$conf" ] || continue
+    porta=$(sed -nE 's/^\s*listen\s+([0-9]+).*/\1/p' "$conf" | head -1)
+    [ -n "$porta" ] || continue
+    codigo=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:$porta/")
+    if [ "$codigo" = 200 ]; then printf '   %s %-15s :%s  HTTP %s\n' "$OK" "$(basename "$conf" .conf)" "$porta" "$codigo"
+    else printf '   %s %-15s :%s  HTTP %s\n' "$ER" "$(basename "$conf" .conf)" "$porta" "${codigo:-sem resposta}"; alerta; fi
+  done
+  local health
+  health=$(curl -s --max-time 5 http://127.0.0.1:8082/api/health)
+  if printf '%s' "$health" | grep -q '"ready":true'; then printf '   %s %-15s :8082  pronto (yt-dlp e ffmpeg ok)\n' "$OK" "OunceDown"
+  elif [ -n "$health" ]; then printf '   %s %-15s :8082  no ar, mas sem yt-dlp/ffmpeg\n' "$AV" "OunceDown"; alerta
+  else printf '   %s %-15s :8082  sem resposta\n' "$ER" "OunceDown"; alerta; fi
+
+  if [ $RAPIDO = 0 ]; then
+    local url tempo
+    url=$(jq -r '.siteUrl // empty' "$HOME/apps/ouncedown/site.config.json" 2>/dev/null)
+    if [ -n "$url" ]; then
+      read -r codigo tempo < <(curl -s -o /dev/null -w '%{http_code} %{time_total}' --max-time 15 "$url/")
+      if [ "$codigo" = 200 ]; then printf '   %s %-15s pela internet  HTTP 200 em %.1fs\n' "$OK" "${url#https://}" "$tempo"
+      else printf '   %s %-15s pela internet  HTTP %s (confira o cloudflared)\n' "$ER" "${url#https://}" "${codigo:-sem resposta}"; alerta; fi
+    fi
+  fi
+
+  # ---------- Bateria ----------
+  if [ $RAPIDO = 0 ]; then
+    titulo 'BATERIA'
+    local bat pct temp plug saude
+    bat=$(timeout 15 termux-battery-status 2>/dev/null)
+    if [ -n "$bat" ]; then
+      pct=$(printf '%s' "$bat" | jq -r '.percentage')
+      temp=$(printf '%s' "$bat" | jq -r '.temperature')
+      plug=$(printf '%s' "$bat" | jq -r '.plugged')
+      saude=$(printf '%s' "$bat" | jq -r '.health')
+      local s=$OK fonte='na tomada'
+      [ "$plug" = UNPLUGGED ] && { fonte="${Y}FORA DA TOMADA${R}"; s=$AV; alerta; }
+      [ "${pct:-100}" -lt 30 ] && { s=$ER; alerta; }
+      if awk -v t="$temp" 'BEGIN{exit !(t > 42)}'; then s=$ER; temp="${RED}${temp}${R}"; alerta; fi
+      printf '   %s %s%% · %b · %s °C · saúde %s\n' "$s" "$pct" "$fonte" "$temp" "$saude"
+    else
+      printf '   %s sem leitura (Termux:API não respondeu)\n' "$AV"
+    fi
+  fi
+
+  # ---------- Processos ----------
+  titulo 'QUEM MAIS USA RAM'
+  ps -A -o rss=,args= --sort=-rss 2>/dev/null | head -5 | while read -r rss args; do
+    args=${args//\/data\/data\/com.termux\/files\/usr\//}
+    args=${args%%--token*}
+    printf '   %5d MB  %s\n' "$((rss / 1024))" "${args:0:60}"
+  done
+
+  # ---------- Vigia ----------
+  titulo 'VIGIA'
+  local ult
+  ult=$(tail -n 1 "$HOME/logs/vigia.log" 2>/dev/null)
+  printf '   %súltimo registro:%s %s\n' "$D" "$R" "${ult:-(log vazio)}"
+
+  # ---------- Resumo ----------
+  echo
+  if [ $ALERTAS = 0 ]; then printf '%s✔ Tudo certo.%s\n' "$B$G" "$R"
+  else printf '%s▲ %d ponto(s) de atenção acima.%s\n' "$B$Y" "$ALERTAS" "$R"; fi
+}
+
+if [ $WATCH = 1 ]; then
+  trap 'printf "\n"; exit 0' INT
+  while true; do
+    saida=$(painel)
+    clear
+    printf '%s\n%s(atualiza a cada %ss · Ctrl+C para sair)%s\n' "$saida" "$D" "$INTERVALO" "$R"
+    sleep "$INTERVALO"
+  done
+else
+  painel
+fi

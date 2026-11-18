@@ -563,6 +563,7 @@ Cada site tem **sua pasta, seu arquivo no nginx e sua porta**. Os sites ficam no
 ├── apps/
 │   └── ouncedown/               # app Node.js (:8082) → ounc3.com.br
 ├── bin/
+│   ├── status                   # painel de saúde do servidor
 │   ├── vigia                    # religa os serviços
 │   ├── alarme-bateria           # avisa bateria baixa / temperatura alta
 │   └── tunel-url                # mostra o endereço do túnel rápido
@@ -612,6 +613,26 @@ Depois é só enviar os arquivos do PC com `scp -r ".\site2\*" twist:www/site2/`
 ---
 
 ## 📊 6. Monitoramento e manutenção
+
+### Painel `status` (tudo de uma vez)
+
+O script [`scripts/status`](scripts/status) mostra em ~3 segundos o sistema, a RAM, o armazenamento, os serviços, os sites (inclusive o teste pela internet), a bateria e os processos mais pesados, com ✔ / ▲ / ✖ e um resumo no fim.
+
+```bash
+~ $ cp scripts/status ~/bin/status && chmod +x ~/bin/status   # instalar no tablet
+```
+
+```powershell
+PC> ssh -t twist status          # painel completo (o -t ativa as cores)
+PC> ssh -t twist status -r       # rápido: pula bateria e teste pela internet
+PC> ssh -t twist status -w 5     # atualiza a cada 5 s (Ctrl+C para sair)
+```
+
+A lista de serviços vem da variável `SERVICOS` do vigia, e as portas dos sites vêm dos `.conf` do nginx: serviço ou site novo aparece no painel automaticamente.
+
+**Limites de alerta:** RAM disponível abaixo de 250 MB (▲) ou 150 MB (✖) · swap acima de 200 MB · disco acima de 80% · carga maior que o número de núcleos · bateria fora da tomada, abaixo de 30% ou acima de 42 °C · qualquer serviço parado ou site sem resposta.
+
+### Comandos individuais
 
 | O que ver | Comando | Referência saudável |
 |---|---|---|
