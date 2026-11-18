@@ -82,11 +82,11 @@ O tablet foi reaproveitado com um conjunto de ferramentas de desenvolvedor:
 
 Hoje ele hospeda **projetos reais**: páginas locais de desenvolvimento, sites de teste e o **[ounc3.com.br](https://ounc3.com.br)**, onde roda o **OunceDown** (ferramenta de download de mídia em Node.js). É a prova de que hardware de entrada esquecido na gaveta pode virar um ambiente de testes útil de verdade.
 
-![ounc3.com.br no ar, servido pelo tablet](docs/prints/13-ounc3-desktop.png)
+![ounc3.com.br no ar, servido pelo tablet](docs/prints/13-ounc3-desktop.webp)
 
-<p align="center"><img src="docs/prints/14-ounc3-celular.png" alt="ounc3.com.br no celular" width="280"></p>
+<p align="center"><img src="docs/prints/14-ounc3-celular.webp" alt="ounc3.com.br no celular" width="280"></p>
 
-![HTTPS válido com a Cloudflare na frente e o Express do tablet por trás](docs/prints/15-https-ounc3.png)
+![HTTPS válido com a Cloudflare na frente do tablet](docs/prints/15-https-ounc3.png)
 
 ---
 
@@ -714,7 +714,7 @@ logs/
 
 ## 📸 9. Prints e evidências
 
-Os prints de terminal foram gerados a partir de **saídas reais** coletadas por SSH no servidor em 17/11/2026, com dados sensíveis mascarados (destacados em rosa: usuário `u0_aXX`, ID do microSD, IDs de conexão e IPs do túnel). Os do site foram capturados direto de `https://ounc3.com.br`. Tudo fica em `docs/prints/`.
+Os prints de terminal foram gerados a partir de **saídas reais** coletadas por SSH no servidor em 18/11/2026 (o teste de download é de 17/11/2026), com dados sensíveis mascarados (destacados em rosa: usuário `u0_aXX`, ID do microSD, IDs de conexão e IPs do túnel). Os do site foram capturados direto de `https://ounc3.com.br`. Tudo fica em `docs/prints/`.
 
 - [x] Sessão `ssh twist` a partir do PowerShell
 - [x] Sistema e versões dos pacotes no Termux
